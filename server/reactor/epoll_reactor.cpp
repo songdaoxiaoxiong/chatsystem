@@ -1,5 +1,6 @@
 #include "epoll_reactor.h"
 #include <iostream>
+#include <cstdio>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -21,7 +22,7 @@ static bool setNonBlocking(int fd) {
 
 static int createListenSocket() {
     int listenSock = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenSock == -1) return -1;
+    if (listenSock == -1) { perror("socket"); return -1; }
 
     int optVal = 1;
     setsockopt(listenSock, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof(optVal));
@@ -31,10 +32,12 @@ static int createListenSocket() {
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(config::SERVER_PORT);
     if (bind(listenSock, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        perror("bind");
         close(listenSock);
         return -1;
     }
     if (listen(listenSock, SOMAXCONN) == -1) {
+        perror("listen");
         close(listenSock);
         return -1;
     }
@@ -42,6 +45,7 @@ static int createListenSocket() {
 }
 
 static void handleAcceptEvent(int epollFd, int listenSock) {
+    std::cout << "🔍 接收到新连接请求" << std::endl;
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
     int clientSock = accept(listenSock, (struct sockaddr*)&clientAddr, &clientAddrLen);
@@ -77,11 +81,12 @@ static void handleClientReadEvent(int clientSock) {
     std::string clientKey = client.ip + ":" + std::to_string(client.port);
 
     if (ret <= 0) {
-        if (ret == 0) std::cout << "❌ 客户端 ["<<clientKey<<"] 主动断开"<<std::endl;
+        if (ret == 0) std::cout << "❌ 客户端 ["<<clientKey<<"] 主动断开111"<<std::endl;
         else if (errno != EAGAIN && errno != EWOULDBLOCK) {
             perror("recv failed");
             std::cout<<"❌ 客户端 ["<<clientKey<<"] 连接异常"<<std::endl;
         } else return;
+        std::cout<<222;
         ClientManager::removeClient(clientSock);
         return;
     }
@@ -107,15 +112,15 @@ static void handleClientReadEvent(int clientSock) {
 
 void reactor::reactorMain() {
     int epollFd = epoll_create1(0);
-    if (epollFd == -1) return;
+    if (epollFd == -1) { return; }
     int listenSock = createListenSocket();
-    if (listenSock == -1) { close(epollFd); return; }
+    if (listenSock == -1) { std::cerr << "createListenSocket failed" << std::endl; close(epollFd); return; }
     if (!setNonBlocking(listenSock)) { close(listenSock); close(epollFd); return; }
 
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = listenSock;
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, listenSock, &ev) == -1) { close(listenSock); close(epollFd); return; }
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, listenSock, &ev) == -1) {  close(listenSock); close(epollFd); return; }
 
     struct epoll_event events[config::MAX_EVENTS];
     std::cout << "🔍 等待客户端连接...（按Ctrl+C退出）" << std::endl;

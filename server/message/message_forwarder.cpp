@@ -31,11 +31,23 @@ static void forwarderLoop() {
         msgQueue.pop();
         lock.unlock();
 
-        int targetSock = ClientManager::findSockByKey(target);
+        // 优化：先通过用户ID查找客户端Key，再找Socket
+        std::string targetClientKey = ClientManager::findClientKeyByUserId(target);
+        int targetSock = -1;
+        if (!targetClientKey.empty()) {
+            targetSock = ClientManager::findSockByKey(targetClientKey);
+        } else {
+            // 兼容原有ip:port格式
+            targetSock = ClientManager::findSockByKey(target);
+        }
+
         if (targetSock != -1) {
             std::string fullMsg = sender + ":" + msg;
             ssize_t ret = send(targetSock, fullMsg.c_str(), fullMsg.length(), MSG_NOSIGNAL);
-            if (ret > 0) continue;
+            if (ret > 0) {
+                std::cout << "📤 消息转发成功 - 发送者：" << sender << " 接收者：" << target << " 内容：" << msg << std::endl;
+                continue;
+            }
         }
 
         // 未在线或发送失败，重新入队

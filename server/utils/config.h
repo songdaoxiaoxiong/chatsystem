@@ -10,5 +10,9 @@ namespace config {
     const std::string HEARTBEAT_REQUEST = "PING";
     const std::string HEARTBEAT_RESPONSE = "PONG";
 
+    constexpr int MSG_TYPE_LEN = 8;          // 八位消息类型
+    constexpr int LOGIN_MSG_TYPE = 1;        // 登录消息类型标识
+    constexpr int NORMAL_MSG_TYPE = 2;       // 普通消息类型标识
+
     extern std::atomic<bool> isRunning;
 }
