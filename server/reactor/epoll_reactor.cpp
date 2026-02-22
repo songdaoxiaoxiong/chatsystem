@@ -90,23 +90,20 @@ static void handleClientReadEvent(int clientSock) {
         ClientManager::removeClient(clientSock);
         return;
     }
-
     std::string recvData(recvBuf, ret);
-    if (recvData == config::HEARTBEAT_REQUEST) {
+    
+    if (recvData.length() >= 4 && recvData.substr(0, 4) == "PING") {
         send(clientSock, config::HEARTBEAT_RESPONSE.c_str(), config::HEARTBEAT_RESPONSE.length(), MSG_NOSIGNAL);
-        std::cout << "❤️ 收到客户端 ["<<clientKey<<"] 心跳包，响应PONG"<<std::endl;
+        //std::cout << "❤️ 收到客户端 ["<<clientKey<<"] 心跳包，响应PONG"<<std::endl;
         ClientManager::updateLastActive(clientSock);
         return;
     }
-
+//std::cout<< "📨 收到客户端 ["<<clientKey<<"] 消息：" << recvData << std::endl;
     ClientManager::updateLastActive(clientSock);
     ClientManager::appendRecvCache(clientSock, recvBuf);
-    // 交给线程池处理解析
-    std::string cacheCopy;
-    ClientManager::getClient(clientSock, client);
-    cacheCopy = client.recvCache;
-    SingletonThreadPool::getInstance().submit([cacheCopy, clientKey](){
-        message_parser::processRecvCache((std::string&)cacheCopy, clientKey);
+    // 将解析任务交给线程池，在 ClientManager 内部安全地移动并更新缓存
+    SingletonThreadPool::getInstance().submit([clientSock, clientKey](){
+        ClientManager::processRecvCache(clientSock, clientKey);
     });
 }
 

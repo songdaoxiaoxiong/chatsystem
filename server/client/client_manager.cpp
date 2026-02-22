@@ -5,6 +5,7 @@
 #include <utility>
 #include <unordered_map>
 #include <mutex>
+#include "../message/message_parser.h"
 
 // ===================== 静态成员变量定义（类内声明，类外定义） =====================
 // 原有基础成员
@@ -164,4 +165,26 @@ void ClientManager::unbindUserId(const std::string& clientKey) {
 
     }
     std::cout << "❌ 客户端[" << clientKey << "] 解绑用户ID成功" << std::endl;
+}
+
+void ClientManager::processRecvCache(int sock, const std::string& clientKey) {
+    std::string buf;
+    {
+        std::lock_guard<std::mutex> lock(clientsMutex);
+        auto it = clients.find(sock);
+        if (it == clients.end()) return;
+        buf = std::move(it->second.recvCache);
+    }
+
+
+    message_parser::processRecvCache(buf, clientKey);
+
+    // 将剩余未处理的数据写回到客户端缓存
+    std::lock_guard<std::mutex> lock(clientsMutex);
+    auto it = clients.find(sock);
+    if (it != clients.end()) {
+        it->second.recvCache = std::move(buf);
+        std::cout << "✅ 客户端[" << clientKey << "] 剩余缓存长度: " << it->second.recvCache.length() << std::endl;
+    }
+    
 }

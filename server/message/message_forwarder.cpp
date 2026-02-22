@@ -21,6 +21,11 @@ void message::enqueueMessage(const std::string& target, const std::string& sende
     queueCond.notify_one();
 }
 
+int message::getmesqueue()
+{
+    return msgQueue.size();
+}
+
 static void forwarderLoop() {
     while (forwarderRunning && config::isRunning) {
         std::unique_lock<std::mutex> lock(queueMutex);
@@ -41,9 +46,8 @@ static void forwarderLoop() {
             targetSock = ClientManager::findSockByKey(target);
         }
 
-        if (targetSock != -1) {
-            std::string fullMsg = sender + ":" + msg;
-            ssize_t ret = send(targetSock, fullMsg.c_str(), fullMsg.length(), MSG_NOSIGNAL);
+        if (targetSock != -1) { 
+            ssize_t ret = send(targetSock, msg.c_str(), msg.length(), MSG_NOSIGNAL);
             if (ret > 0) {
                 std::cout << "📤 消息转发成功 - 发送者：" << sender << " 接收者：" << target << " 内容：" << msg << std::endl;
                 continue;

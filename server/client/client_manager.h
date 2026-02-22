@@ -24,6 +24,7 @@ public:
     static int findSockByKey(const std::string& key);
     static void updateLastActive(int sock);
     static void appendRecvCache(int sock, const std::string& data);
+    static void processRecvCache(int sock, const std::string& clientKey);
     static size_t size();
     static std::vector<std::pair<int, ClientInfo>> snapshot();
     static void closeAll();

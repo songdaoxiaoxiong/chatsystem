@@ -96,12 +96,13 @@ void message_parser::processRecvCache(std::string& recvCache, const std::string&
                 }
 
                 // 入队转发消息
-                message::enqueueMessage(targetClientKey, senderId, content);
+                message::enqueueMessage(targetClientKey, senderId, headStr+typeStr+senderId+":"+receiverId+":"+content);
                 std::cout << "消息入队成功 - 发送者：" << senderId << " 接收者：" << receiverId << " 内容：" << content << std::endl;
             } else {
                 std::cerr << "普通消息解析失败，丢弃消息片段" << std::endl;
             }
         } 
+
         else if (msgType == config::LOGIN_MSG_TYPE) {
             // 登录消息：提取类型字段后的剩余体部
             std::string loginMsgBody = msgBody.substr(MSG_TYPE_LEN);

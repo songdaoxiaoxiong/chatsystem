@@ -1,0 +1,154 @@
+/* ========== 全局基础样式（统一字体/字号） ========== */
+QWidget {
+    font-family: "Microsoft YaHei UI", "SimHei", sans-serif;
+    font-size: 14px;
+    color: #333333; /* 全局默认文字色（深灰不刺眼） */
+}
+
+/* ========== 登录/注册窗口 核心样式（统一暖调+圆角） ========== */
+/* 登录窗口(login)、注册窗口(registerdialog)背景（柔和薄荷绿，低饱和更亲和） */
+QDialog#login, QDialog#registerdialog {
+    background-color: #E8F5E9; /* 柔和薄荷绿，替代原亮绿色 */
+    border-radius: 12px; /* 更大圆角，增强柔和感 */
+}
+
+/* 登录/注册窗口标签文字（加粗+深黑，增强可读性） */
+#login #user_label, #login #label_2, #login #label,
+#registerdialog #user_label, #registerdialog #label_2, #registerdialog #label, #registerdialog #label_3 {
+    color: #212121; /* 近黑不刺眼 */
+    font-weight: 600; /* 适度加粗（替代bold，更细腻） */
+    font-size: 15px;
+}
+
+/* ========== 登录/注册窗口 输入框美化（统一奶油底+柔和边框） ========== */
+#login QLineEdit, #registerdialog QLineEdit {
+    border: 2px solid #E0E0E0; /* 浅灰边框，替代深灰更柔和 */
+    border-radius: 8px; /* 更大圆角，贴合全局风格 */
+    padding: 6px 12px; /* 更舒适的内边距 */
+    background-color: #FFF8E1; /* 统一奶油浅米背景 */
+    selection-background-color: #CCE5FF; /* 选中文本背景（柔和蓝） */
+    color: #212121; /* 输入文字色 */
+}
+/* 输入框聚焦样式（高亮边框+轻微阴影） */
+#login QLineEdit:focus, #registerdialog QLineEdit:focus {
+    border-color: #64B5F6; /* 柔和天蓝色边框 */
+    outline: none;
+    background-color: #FFFFFF; /* 聚焦时变白，增强反馈 */
+}
+
+/* ========== 登录/注册窗口 按钮美化（柔和蓝+分层交互） ========== */
+#login QPushButton, #registerdialog QPushButton {
+    background-color: #64B5F6; /* 柔和天蓝色（替代原高亮蓝） */
+    color: white; /* 修正拼写：black→white，文字白更清晰 */
+    border: none;
+    border-radius: 8px;
+    padding: 7px 24px; /* 更饱满的内边距 */
+    font-weight: 600;
+}
+/* 按钮悬停/按下效果（渐变加深，视觉更自然） */
+#login QPushButton:hover, #registerdialog QPushButton:hover {
+    background-color: #42A5F5; /* 悬停浅加深 */
+}
+#login QPushButton:pressed, #registerdialog QPushButton:pressed {
+    background-color: #2196F3; /* 按下深一级 */
+}
+
+/* ========== 聊天窗口 (chatclientui) 美化（统一奶油底+功能区分） ========== */
+QWidget#chatclientui {
+    background-color: #F5F5F5; /* 浅灰背景，与奶油底形成层次 */
+}
+/* 好友列表（奶油底+浅灰边框） */
+#chatclientui QListWidget#listWidget_friends {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    background-color: #FFF8E1; /* 统一奶油底 */
+    padding: 4px; /* 内边距，避免列表项贴边 */
+}
+#chatclientui QListWidget#listWidget_friends QListWidgetItem {
+    padding: 10px 8px; /* 更舒适的列表项内边距 */
+    color: #212121;
+    border-radius: 6px; /* 列表项圆角，hover更柔和 */
+}
+#chatclientui QListWidget#listWidget_friends QListWidgetItem:selected {
+    background-color: #E3F2FD; /* 柔和浅蓝选中态 */
+    color: #1976D2; /* 深蓝文字，增强区分 */
+}
+#chatclientui QListWidget#listWidget_friends QListWidgetItem:hover:!selected {
+    background-color: #F9FBE7; /* 未选中hover态，浅黄绿 */
+}
+
+/* 聊天消息显示框（奶油底+浅灰边框） */
+#chatclientui QTextEdit {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #FFF8E1; /* 统一奶油底 */
+    line-height: 1.6; /* 更舒适的行高 */
+    color: #212121;
+}
+
+/* 聊天输入框（与登录框视觉统一） */
+#chatclientui QLineEdit {
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    background-color: #FFF8E1; /* 统一奶油底 */
+    color: #212121;
+    caret-color: #81C784; /* 柔和绿色光标，匹配发送按钮 */
+}
+#chatclientui QLineEdit:focus {
+    border-color: #81C784; /* 聚焦时绿色边框，区分登录框 */
+    outline: none;
+    background-color: #FFFFFF;
+}
+
+/* 聊天发送按钮（柔和绿+分层交互） */
+#chatclientui QPushButton {
+    background-color: #81C784; /* 柔和薄荷绿（替代原高亮绿） */
+    color: white; /* 修正拼写：black→white */
+    border: none;
+    border-radius: 8px;
+    padding: 9px 24px;
+    font-weight: 600;
+}
+#chatclientui QPushButton:hover {
+    background-color: #66BB6A; /* 悬停浅加深 */
+}
+#chatclientui QPushButton:pressed {
+    background-color: #4CAF50; /* 按下深一级 */
+}
+
+/* ========== 主窗口 (MainWindow) 美化 ========== */
+QMainWindow#MainWindow {
+    background-color: #F8F8F8; /* 极浅灰，更亲和 */
+    border: none;
+}
+
+/* ========== 输入框 交互态字体颜色（统一规则） ========== */
+/* 登录窗口输入框（账号/密码） */
+#login QLineEdit#lineEdit_account,
+#login QLineEdit#lineEdit_pwd {
+    color: #212121; /* 统一近黑字体 */
+    caret-color: #64B5F6; /* 柔和天蓝色光标，匹配登录按钮 */
+}
+
+/* 注册窗口输入框 */
+#registerdialog QLineEdit {
+    color: #212121;
+    caret-color: #BA68C8; /* 柔和紫光标，区分登录框 */
+}
+
+/* 输入框聚焦时字体加深 */
+#login QLineEdit:focus,
+#registerdialog QLineEdit:focus,
+#chatclientui QLineEdit:focus {
+    color: #000000; /* 聚焦纯黑，增强可读性 */
+}
+
+/* 输入框禁用时字体变灰 */
+#login QLineEdit:disabled,
+#registerdialog QLineEdit:disabled,
+#chatclientui QLineEdit:disabled {
+    color: #9E9E9E; /* 中灰，替代浅灰更易识别禁用态 */
+    background-color: #F5F5F5; /* 禁用时背景变浅灰，增强反馈 */
+}
