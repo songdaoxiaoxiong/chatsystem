@@ -188,3 +188,52 @@ void ClientManager::processRecvCache(int sock, const std::string& clientKey) {
     }
     
 }
+// 新增：绑定客户端UDP信息
+bool ClientManager::bindClientUdpInfo(const std::string& userId, uint16_t udpPort, const std::string& udpIp) {
+    std::lock_guard<std::mutex> idLock(idMapMutex);
+    std::lock_guard<std::mutex> clientLock(clientsMutex);
+
+    // 1. 通过用户ID找到客户端Key
+    auto clientKeyIt = userIdToClientKey.find(userId);
+    if (clientKeyIt == userIdToClientKey.end()) {
+        std::cerr << "用户[" << userId << "]未登录，无法绑定UDP信息" << std::endl;
+        return false;
+    }
+    std::string clientKey = clientKeyIt->second;
+
+    // 2. 更新客户端UDP信息
+    for (auto& p : clients) {
+        std::string ck = p.second.ip + ":" + std::to_string(p.second.port);
+        if (ck == clientKey) {
+            p.second.udpIp = udpIp;
+            p.second.udpPort = udpPort;
+            std::cout << "✅ 用户[" << userId << "] 绑定UDP信息成功 - IP：" << udpIp << " 端口：" << udpPort << std::endl;
+            return true;
+        }
+    }
+    return false;
+}
+
+// 新增：通过用户ID获取UDP信息
+bool ClientManager::getClientUdpInfo(const std::string& userId, std::string& outIp, uint16_t& outPort) {
+    std::lock_guard<std::mutex> idLock(idMapMutex);
+    std::lock_guard<std::mutex> clientLock(clientsMutex);
+
+    // 1. 通过用户ID找到客户端Key
+    auto clientKeyIt = userIdToClientKey.find(userId);
+    if (clientKeyIt == userIdToClientKey.end()) {
+        return false;
+    }
+    std::string clientKey = clientKeyIt->second;
+
+    // 2. 查找客户端UDP信息
+    for (const auto& p : clients) {
+        std::string ck = p.second.ip + ":" + std::to_string(p.second.port);
+        if (ck == clientKey) {
+            outIp = p.second.udpIp;
+            outPort = p.second.udpPort;
+            return !outIp.empty() && outPort != 0;
+        }
+    }
+    return false;
+}

@@ -14,6 +14,8 @@ struct ClientInfo {
     std::string recvCache;
     std::chrono::steady_clock::time_point last_active_time;
     std::string userId; // 新增：绑定的用户ID
+    uint16_t udpPort;         // 新增：客户端UDP语音端口
+    std::string udpIp;        // 新增：客户端UDP IP（可能和TCP IP一致
 };
 
 class ClientManager {
@@ -35,6 +37,10 @@ public:
     static std::string findUserIdByClientKey(const std::string& clientKey);
     static void unbindUserId(const std::string& clientKey);
 
+    // 新增：绑定客户端UDP信息
+    static bool bindClientUdpInfo(const std::string& userId, uint16_t udpPort, const std::string& udpIp);
+    // 新增：通过用户ID获取UDP信息
+    static bool getClientUdpInfo(const std::string& userId, std::string& outIp, uint16_t& outPort);
 private:
     static std::unordered_map<int, ClientInfo> clients;
     static std::mutex clientsMutex;

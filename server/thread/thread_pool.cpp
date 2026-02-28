@@ -32,7 +32,7 @@ ThreadPool::~ThreadPool() {
     }
 }
 
-SingletonThreadPool::SingletonThreadPool() : pool(8) {}
+SingletonThreadPool::SingletonThreadPool() : pool(16) {}
 
 SingletonThreadPool& SingletonThreadPool::getInstance() {
     static SingletonThreadPool instance;

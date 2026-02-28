@@ -36,32 +36,60 @@ bool message_parser::parseLoginMessage(const std::string& loginMsgBody, std::str
     return !userId.empty() && !account.empty() && !password.empty();
 }
 
-// 修改processRecvCache方法，新增消息类型处理逻辑
+// 修正：UDP端口绑定消息解析（格式：senderId:receiverId:voice_call）
+bool message_parser::parseUdpBindMessage(const std::string& udpBindMsgBody, std::string& senderId, std::string& receiverId) {
+    // 消息体格式：senderId:receiverId:voice_call
+    size_t firstColon = udpBindMsgBody.find(':');
+    size_t secondColon = udpBindMsgBody.find(':', firstColon + 1);
+    
+    // 校验格式完整性 + voice_call 标识
+    if (firstColon == std::string::npos || secondColon == std::string::npos) {
+        std::cerr << "❌ 语音通话请求格式错误：缺少分隔符" << std::endl;
+        return false;
+    }
+
+    // 解析字段
+    senderId = udpBindMsgBody.substr(0, firstColon);
+    receiverId = udpBindMsgBody.substr(firstColon + 1, secondColon - firstColon - 1);
+    std::string reqType = udpBindMsgBody.substr(secondColon + 1);
+
+    // 强制校验语音通话标识
+    if (reqType != "voice_call") {
+        std::cerr << "❌ 非语音通话请求，标识错误：" << reqType << std::endl;
+        return false;
+    }
+
+    // 基础合法性校验
+    if (senderId.empty() || receiverId.empty()) {
+        std::cerr << "❌ 发送者/接收者ID为空 - 发送者：" << senderId << " 接收者：" << receiverId << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+
+// 修改processRecvCache，增加UDP端口绑定消息处理
 void message_parser::processRecvCache(std::string& recvCache, const std::string& clientKey) {
-    const int HEAD_LEN = 4;          // 四位长度
-    const int MSG_TYPE_LEN = config::MSG_TYPE_LEN; // 八位消息类型
-    const int MIN_BODY_LEN = MSG_TYPE_LEN + 1;     // 最小体部长度（类型+内容）
+    const int HEAD_LEN = 4;          
+    const int MSG_TYPE_LEN = config::MSG_TYPE_LEN; 
+    const int MIN_BODY_LEN = MSG_TYPE_LEN + 1;     
 
     while (true) {
         if (recvCache.length() < HEAD_LEN + MIN_BODY_LEN) break;
 
-        // 解析消息头（四位长度）
         std::string headStr = recvCache.substr(0, HEAD_LEN);
         int bodyExpectedLen = 0;
         try {
             bodyExpectedLen = std::stoi(headStr);
-        }
-        catch (...) {
+        } catch (...) {
             recvCache.erase(0, 1);
             continue;
         }
 
-        // 检查消息体长度是否足够
         if (recvCache.length() < HEAD_LEN + bodyExpectedLen) break;
 
-        // 提取完整消息体
         std::string msgBody = recvCache.substr(HEAD_LEN, bodyExpectedLen);
-        // 提取消息类型（前8位）
         if (msgBody.length() < MSG_TYPE_LEN) {
             recvCache.erase(0, HEAD_LEN + bodyExpectedLen);
             continue;
@@ -75,8 +103,39 @@ void message_parser::processRecvCache(std::string& recvCache, const std::string&
             continue;
         }
         std::cout<< "📨 收到消息 - 客户端：" << clientKey << " 类型：" << msgType << " 内容长度：" << bodyExpectedLen - MSG_TYPE_LEN << std::endl;
-        // 根据消息类型处理
-        if (msgType == config::NORMAL_MSG_TYPE) {
+
+        // ========== 修正：UDP端口绑定消息处理 ==========
+        if (msgType == config::UDP_PORT_BIND_TYPE) {
+            std::string udpBindMsgBody = msgBody.substr(MSG_TYPE_LEN);
+            std::string senderId, receiverId;
+            
+            // 解析语音通话请求（发送者ID:接收者ID:voice_call）
+            if (parseUdpBindMessage(udpBindMsgBody, senderId, receiverId)) {
+                // 从客户端Key（ip:port）提取发送者的IP（客户端连接的IP）
+                size_t colonPos = clientKey.find(':');
+                if (colonPos == std::string::npos) {
+                    std::cerr << "❌ 提取发送者IP失败 - ClientKey格式错误：" << clientKey << std::endl;
+                    break;
+                }
+                std::string senderIp = clientKey.substr(0, colonPos);
+                const uint16_t voiceUdpPort = 8890; // 固定绑定8890端口
+
+                // 绑定：接收者ID 关联 发送者IP + 8890端口（作为接收UDP的地址）
+                bool bindOk = ClientManager::bindClientUdpInfo(receiverId, voiceUdpPort, senderIp);
+                if (bindOk) {
+                    std::cout << "✅ 语音通话UDP地址绑定成功" << std::endl;
+                    std::cout << "  ├─ 接收者ID：" << receiverId << std::endl;
+                    std::cout << "  ├─ 接收UDP地址：" << senderIp << ":" << voiceUdpPort << std::endl;
+                    std::cout << "  └─ 发送者ID：" << senderId << std::endl;
+                } else {
+                    std::cerr << "❌ 语音通话UDP地址绑定失败 - 接收者ID：" << receiverId << std::endl;
+                }
+            } else {
+                std::cerr << "❌ 语音通话请求解析失败 - 消息体：" << udpBindMsgBody << std::endl;
+            }
+        }
+        // ========== 原有：普通消息处理逻辑 ==========
+        else if (msgType == config::NORMAL_MSG_TYPE) {
             // 普通消息：提取类型字段后的剩余体部
             std::string normalMsgBody = msgBody.substr(MSG_TYPE_LEN);
             std::string senderId, receiverId, content;
@@ -101,8 +160,8 @@ void message_parser::processRecvCache(std::string& recvCache, const std::string&
             } else {
                 std::cerr << "普通消息解析失败，丢弃消息片段" << std::endl;
             }
-        } 
-
+        }
+        // ========== 原有：登录消息处理逻辑 ==========
         else if (msgType == config::LOGIN_MSG_TYPE) {
             // 登录消息：提取类型字段后的剩余体部
             std::string loginMsgBody = msgBody.substr(MSG_TYPE_LEN);
@@ -122,9 +181,8 @@ void message_parser::processRecvCache(std::string& recvCache, const std::string&
             } else {
                 std::cerr << "登录消息解析失败，丢弃消息片段" << std::endl;
             }
-        }
-        else {
-            // 其他消息类型，暂不处理（可扩展）
+        } else {
+            // 其他消息类型，暂不处理
             std::cerr << "不支持的消息类型：" << msgType << "，丢弃消息片段" << std::endl;
         }
 

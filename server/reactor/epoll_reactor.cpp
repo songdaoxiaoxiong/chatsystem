@@ -92,7 +92,7 @@ static void handleClientReadEvent(int clientSock) {
     }
     std::string recvData(recvBuf, ret);
     
-    if (recvData.length() >= 4 && recvData.substr(0, 4) == "PING") {
+    if (recvData.length() >= 4 && recvData.substr(0, 10) == "dwasdfggSG") {
         send(clientSock, config::HEARTBEAT_RESPONSE.c_str(), config::HEARTBEAT_RESPONSE.length(), MSG_NOSIGNAL);
         //std::cout << "❤️ 收到客户端 ["<<clientKey<<"] 心跳包，响应PONG"<<std::endl;
         ClientManager::updateLastActive(clientSock);
