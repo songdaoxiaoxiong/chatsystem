@@ -1,9 +1,10 @@
 QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets network
-
+greaterThan(QT_MAJOR_VERSION, 4): QT += core gui widgets network
+INCLUDEPATH += $$PWD/include
 CONFIG += c++17
-
+LIBS += -L$$PWD/lib/
+LIBS += -lportaudio_x64
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -15,7 +16,8 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     registerdialog.cpp\
-    client.cpp
+    client.cpp\
+    voicemanager.cpp
 
 HEADERS += \
     Global.h \
@@ -25,7 +27,8 @@ HEADERS += \
     mainwindow.h \
     registerdialog.h \
     #singleton.h\
-    client.h
+    client.h\
+    voicemanager.h
 
 FORMS += \
     chatclientui.ui \
@@ -38,5 +41,8 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 win32 { LIBS += -lws2_32 }
+win32 {
+    LIBS += -lwinmm -lole32 -luser32
+}
 RESOURCES += \
     res.qrc

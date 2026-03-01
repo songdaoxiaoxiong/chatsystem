@@ -1,46 +1,44 @@
 #ifndef CHATCLIENTUI_H
 #define CHATCLIENTUI_H
-#include"client.h"
+#include "client.h"
+#include "voicemanager.h"
 #include <QWidget>
-#include <QListWidgetItem> // 用于处理列表项点击
-
-namespace Ui {
-class chatclientui;
-}
+#include <QThread>
+#include<QListWidget>
+namespace Ui { class chatclientui; }
 
 class chatclientui : public QWidget
 {
     Q_OBJECT
-
 public:
     explicit chatclientui(QWidget *parent = nullptr);
-    ~chatclientui();
-    // 修复单例实现
-    static chatclientui* getInstance() {
-        if(instance == nullptr) {
-            instance = new chatclientui();
-        }
-        return instance;
-    }
-    // 新增：设置当前登录用户ID（senderId）
+    ~chatclientui() override;
+    static chatclientui* getInstance();
     void setSenderId(const QString &senderId);
     Client* client;
+
 private slots:
-    void on_PushButton();
-    // 新增：QListWidget好友列表项点击事件
-    void on_listWidget_friends_itemClicked(QListWidgetItem *item);
+    void on_PushButton();                     // 发送文字消息
+    void on_listWidget_friends_itemClicked(QListWidgetItem *item); // 选择好友
+    void on_pushButton_2_clicked();           // 语音通话按钮
+    // 接收VoiceManager信号
+    void onVoiceCallStarted();
+    void onVoiceCallStopped();
+    void onVoiceError(const QString &msg);
 
 private:
     static chatclientui* instance;
-    static int init; // 保留原有变量，兼容初始化逻辑
     Ui::chatclientui *ui;
+    QString m_senderId;
+    QString m_receiverId;
+    VoiceManager *m_voiceManager = nullptr;   // 语音管理器
+    QThread *m_voiceThread = nullptr;         // 语音独立线程
 
-    QString m_senderId;    // 登录用户ID（消息发送方）
-    QString m_receiverId;  // 选中的好友ID（消息接收方）
     void addMsgToDisplay(const QString &sender, const QString &msg);
-    // 新增：构造符合协议的消息包
     std::string buildMsgPacket(const QString &content);
+    std::string buildVoiceCallPacket();
 };
 
 extern chatclientui* c;
+
 #endif // CHATCLIENTUI_H
