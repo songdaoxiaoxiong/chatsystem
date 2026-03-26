@@ -49,4 +49,27 @@ private:
     static std::unordered_map<std::string, std::string> userIdToClientKey; // userId -> ip:port
     static std::unordered_map<std::string, std::string> clientKeyToUserId; // ip:port -> userId
     static std::mutex idMapMutex; // 保护ID映射的互斥锁
+
+public:
+
+    // 1. 追加发送缓存（缓冲区满时存储未发送的数据）
+    static void appendSendCache(int fd, const std::string& data);
+
+    // 2. 启用 EPOLLOUT 事件（监听发送缓冲区是否有空间）
+    static void enableWriteEvent(int fd);
+
+    // 3. 禁用 EPOLLOUT 事件（发送完成后取消监听）
+    static void disableWriteEvent(int fd);
+
+    // 4. 处理 EPOLLOUT 事件（缓冲区有空间时发送缓存数据）
+    static void handleWriteEvent(int fd);
+
+    // 设置 epoll fd（由 reactor 在启动时传入）
+    static void setEpollFd(int epfd);
+
+private:
+    static std::unordered_map<int, std::string> s_sendCache;
+    static std::mutex s_sendCacheMutex;
+    // epoll fd，用于修改事件（注册/注销 EPOLLOUT）
+    static int s_epollFd;
 };

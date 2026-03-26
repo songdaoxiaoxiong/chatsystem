@@ -10,6 +10,7 @@
 #include <errno.h>
 #include "../client/client_manager.h"
 #include "../message/message_parser.h"
+#include "../message/message_forwarder.h"
 #include "../thread/thread_pool.h"
 #include "../utils/config.h"
 
@@ -91,13 +92,65 @@ static void handleClientReadEvent(int clientSock) {
         return;
     }
     std::string recvData(recvBuf, ret);
-    
+    /*
     if (recvData.length() >= 4 && recvData.substr(0, 10) == "dwasdfggSG") {
         send(clientSock, config::HEARTBEAT_RESPONSE.c_str(), config::HEARTBEAT_RESPONSE.length(), MSG_NOSIGNAL);
         //std::cout << "❤️ 收到客户端 ["<<clientKey<<"] 心跳包，响应PONG"<<std::endl;
         ClientManager::updateLastActive(clientSock);
         return;
-    }
+    }*/
+   if (recvData.length() >= 4 && recvData.substr(0, 10) == "dwasdfggSG") {
+    // 1. 维持心跳超时逻辑（线程池内调用，需保证ClientManager线程安全）
+            ClientManager::updateLastActive(clientSock);
+
+            // 2. 封装心跳响应为标准消息格式（和普通消息一致）
+            std::string heartbeatRespContent = config::HEARTBEAT_RESPONSE; // PONG
+            // 消息体 = 8位消息类型 + 响应内容
+            std::string msgTypeStr = std::string(config::MSG_TYPE_LEN - std::to_string(config::NORMAL_MSG_TYPE).length(), '0') 
+                                 + std::to_string(config::NORMAL_MSG_TYPE);
+            std::string msgBody = msgTypeStr + "heartbeat:" + clientKey + ":" + heartbeatRespContent;
+            // 消息头 = 4位长度（消息体长度，补零对齐）
+            std::string msgHead = std::string(4 - std::to_string(msgBody.length()).length(), '0') 
+                                + std::to_string(msgBody.length());
+            // 完整消息 = 消息头 + 消息体
+            std::string fullMsg = msgHead + msgBody;
+
+            // 3. 复用普通消息转发路径：入队（目标为发送者自身）
+            message::enqueueMessage(clientKey, "server", fullMsg);
+    // 关键：将所有操作封装到Lambda，提交给线程池异步处理
+    // 捕获方式：clientSock（值捕获）、clientKey（值捕获，避免原变量生命周期问题）
+    /*
+    SingletonThreadPool::getInstance().submit([clientSock, clientKey]() {
+            // 1. 维持心跳超时逻辑（线程池内调用，需保证ClientManager线程安全）
+            ClientManager::updateLastActive(clientSock);
+
+            // 2. 封装心跳响应为标准消息格式（和普通消息一致）
+            std::string heartbeatRespContent = config::HEARTBEAT_RESPONSE; // PONG
+            // 消息体 = 8位消息类型 + 响应内容
+            std::string msgTypeStr = std::string(config::MSG_TYPE_LEN - std::to_string(config::NORMAL_MSG_TYPE).length(), '0') 
+                                 + std::to_string(config::NORMAL_MSG_TYPE);
+            std::string msgBody = msgTypeStr + "heartbeat:" + clientKey + ":" + heartbeatRespContent;
+            // 消息头 = 4位长度（消息体长度，补零对齐）
+            std::string msgHead = std::string(4 - std::to_string(msgBody.length()).length(), '0') 
+                                + std::to_string(msgBody.length());
+            // 完整消息 = 消息头 + 消息体
+            std::string fullMsg = msgHead + msgBody;
+
+            // 3. 复用普通消息转发路径：入队（目标为发送者自身）
+            message::enqueueMessage(clientKey, "server", fullMsg);
+
+       
+    });*/
+    return;
+}
+/*
+    //std::cout<< "📨 收到客户端 ["<<clientKey<<"] 消息：" << recvData << std::endl;
+    ClientManager::updateLastActive(clientSock);
+    ClientManager::appendRecvCache(clientSock, recvBuf);
+    // 将解析任务交给线程池，在 ClientManager 内部安全地移动并更新缓存
+    SingletonThreadPool::getInstance().submit([clientSock, clientKey](){
+        ClientManager::processRecvCache(clientSock, clientKey);
+    });*/
 //std::cout<< "📨 收到客户端 ["<<clientKey<<"] 消息：" << recvData << std::endl;
     ClientManager::updateLastActive(clientSock);
     ClientManager::appendRecvCache(clientSock, recvBuf);
@@ -107,9 +160,12 @@ static void handleClientReadEvent(int clientSock) {
     });
 }
 
+
 void reactor::reactorMain() {
     int epollFd = epoll_create1(0);
     if (epollFd == -1) { return; }
+    // 将 epoll fd 传给 ClientManager，用于 enable/disable EPOLLOUT
+    ClientManager::setEpollFd(epollFd);
     int listenSock = createListenSocket();
     if (listenSock == -1) { std::cerr << "createListenSocket failed" << std::endl; close(epollFd); return; }
     if (!setNonBlocking(listenSock)) { close(listenSock); close(epollFd); return; }
@@ -130,8 +186,13 @@ void reactor::reactorMain() {
         }
         for (int i=0;i<nfds;++i) {
             int fd = events[i].data.fd;
-            if (fd == listenSock) handleAcceptEvent(epollFd, listenSock);
-            else if (events[i].events & EPOLLIN) handleClientReadEvent(fd);
+            if (fd == listenSock) {
+                handleAcceptEvent(epollFd, listenSock);
+                continue;
+            }
+            // 可能同时有读和写事件，分别处理（不要用 else-if）
+            if (events[i].events & EPOLLIN) handleClientReadEvent(fd);
+            if (events[i].events & EPOLLOUT) ClientManager::handleWriteEvent(fd);
         }
     }
 

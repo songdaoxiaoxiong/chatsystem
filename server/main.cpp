@@ -1,5 +1,5 @@
 // server/main.cpp 新增UDP语音服务启动/停止
-//#define NO_COUT
+#define NO_COUT
 
 #ifdef NO_COUT
     #include <iostream>
